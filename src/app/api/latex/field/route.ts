@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
         productType: 'Field Latex',
         startDate: new Date(),
         shift: 'Day',
-        operatorId: 1,
+        operatorId: '1',
         status: 'received'
       }
     })

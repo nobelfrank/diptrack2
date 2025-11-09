@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
         latexBatchId,
         startDate: new Date(),
         shift,
-        operatorId: 1,
+        operatorId: '1',
         status: 'draft'
       },
       include: {
