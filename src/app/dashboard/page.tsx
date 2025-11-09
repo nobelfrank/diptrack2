@@ -222,7 +222,7 @@ export default function Dashboard() {
               ].map((process, index) => (
                 <div key={index} className="flex justify-between items-center">
                   <span className="text-xs sm:text-sm">{process.name}</span>
-                  <StatusBadge status={process.status}>
+                  <StatusBadge status={process.status as "info" | "critical" | "warning" | "normal" | "stable"}>
                     {process.status === 'normal' ? 'Normal' : process.status === 'warning' ? 'Warning' : 'Critical'}
                   </StatusBadge>
                 </div>
