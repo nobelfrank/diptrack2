@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
 import { BottomNav } from "@/components/BottomNav";
 import { DesktopSidebar } from "@/components/DesktopSidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, SlidersHorizontal, ArrowRight, Loader2 } from "lucide-react";
+import { Search, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Progress } from "@/components/ui/progress";
 import Header from "@/components/Header";
@@ -22,22 +22,28 @@ export default function Batches() {
   const [searchQuery, setSearchQuery] = useState('');
   const { data: session } = useSession();
   
-  const userRoles = session?.user?.roles || [];
-  const canCreateBatch = userRoles.includes('admin') || userRoles.includes('operator');
+  const canCreateBatch = useMemo(() => {
+    const roles = session?.user?.roles || [];
+    return roles.includes('admin') || roles.includes('operator');
+  }, [session?.user?.roles]);
 
-  const filteredBatches = batches
-    .filter(batch => {
-      if (filter === 'all') return true;
-      return batch.status === filter;
-    })
-    .filter(batch => {
-      if (!searchQuery) return true;
-      return (
+  const filteredBatches = useMemo(() => {
+    return batches
+      .filter(batch => filter === 'all' || batch.status === filter)
+      .filter(batch => !searchQuery || 
         batch.batchId.toLowerCase().includes(searchQuery.toLowerCase()) ||
         batch.productType.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    })
-    .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+      )
+      .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+  }, [batches, filter, searchQuery]);
+
+  const handleBatchClick = useCallback((id: string) => {
+    router.push(`/batches/${id}`);
+  }, [router]);
+
+  const handleCreateBatch = useCallback(() => {
+    router.push('/batches/create');
+  }, [router]);
 
   return (
     <ProtectedRoute allowedRoles={['admin', 'supervisor', 'operator']}>
@@ -55,7 +61,7 @@ export default function Batches() {
         {canCreateBatch && (
           <Button 
             className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto"
-            onClick={() => router.push('/batches/create')}
+            onClick={handleCreateBatch}
           >
             New Batch
           </Button>
@@ -76,9 +82,7 @@ export default function Batches() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button variant="outline" size="icon" className="shrink-0 h-10 w-10">
-            <SlidersHorizontal className="w-4 h-4" />
-          </Button>
+
         </div>
 
         {/* Filter Pills */}
@@ -109,11 +113,9 @@ export default function Batches() {
           </Button>
         </div>
 
-        {/* Loading State */}
         {loading && (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin" />
-            <span className="ml-2">Loading batches...</span>
+            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         )}
 
@@ -134,7 +136,7 @@ export default function Batches() {
             <Card 
               key={batch.id} 
               className="p-4 lg:p-5 bg-card border-border cursor-pointer hover:border-primary/50 hover:shadow-lg transition-all"
-              onClick={() => router.push(`/batches/${batch.id}`)}
+              onClick={() => handleBatchClick(batch.id)}
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">

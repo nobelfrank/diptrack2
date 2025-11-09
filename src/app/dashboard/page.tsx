@@ -11,27 +11,28 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useAlerts } from "@/hooks/useAlerts";
 import { useSession } from "next-auth/react";
+import { useMemo, useCallback } from "react";
 
 export default function Dashboard() {
   const { metrics, lineStatus, activeBatch, loading: dashboardLoading } = useDashboard();
   const { alerts, acknowledgeAlert, assignAlert, loading: alertsLoading } = useAlerts();
   const { data: session } = useSession();
 
-  const handleBatchClick = () => {
+  const handleBatchClick = useCallback(() => {
     if (activeBatch) {
       // Navigate to batch details
     }
-  };
+  }, [activeBatch]);
 
-  const handleAcknowledge = async (alertId: string) => {
+  const handleAcknowledge = useCallback(async (alertId: string) => {
     try {
       await acknowledgeAlert(alertId);
     } catch (error) {
       console.error('Failed to acknowledge alert:', error);
     }
-  };
+  }, [acknowledgeAlert]);
 
-  const handleAssign = async (alertId: string) => {
+  const handleAssign = useCallback(async (alertId: string) => {
     try {
       if (session?.user?.id) {
         await assignAlert(alertId, session.user.id);
@@ -39,28 +40,27 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Failed to assign alert:', error);
     }
-  };
+  }, [assignAlert, session?.user?.id]);
 
-  const activeAlerts = alerts.filter(alert => alert.status === 'active').slice(0, 3);
+  const activeAlerts = useMemo(() => 
+    alerts.filter(alert => alert.status === 'active').slice(0, 3),
+    [alerts]
+  );
 
-  // Chart data
-  const performanceData = [
+  const performanceData = useMemo(() => [
     { name: "Theoretical Time", value: 100, color: "hsl(var(--primary))" },
     { name: "Planned Production", value: 95, color: "hsl(var(--primary))" },
-    { name: "Planned Operating", value: 88, color: "hsl(var(--primary))" },
     { name: "Machine Run Time", value: 78, color: "hsl(var(--chart-2))" },
     { name: "Target Performance", value: 85, color: "hsl(var(--chart-3))" },
     { name: "Actual Performance", value: 72, color: "hsl(var(--destructive))" },
-    { name: "Total Quantity", value: 90, color: "hsl(var(--chart-4))" },
-    { name: "Yield", value: 68, color: "hsl(var(--destructive))" },
     { name: "OEE", value: 87, color: "hsl(var(--destructive))" },
-  ];
+  ], []);
 
-  const lossesData = [
+  const lossesData = useMemo(() => [
     { category: "Availability", losses: ["Breakdowns", "Setup losses"] },
     { category: "Performance", losses: ["Short-term downtimes", "Slow cycles"] },
     { category: "Quality", losses: ["Startup losses", "Production losses"] },
-  ];
+  ], []);
 
   return (
     <ProtectedRoute allowedRoles={['admin', 'supervisor', 'operator', 'qc_officer']}>

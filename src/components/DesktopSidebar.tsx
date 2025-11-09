@@ -1,8 +1,18 @@
-import { Activity, Bell, Layers, ClipboardCheck, Settings, Beaker, Gauge, Package } from "lucide-react";
+import {
+  Activity,
+  Bell,
+  Layers,
+  ClipboardCheck,
+  Settings,
+  Beaker,
+  Gauge,
+  Package,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
+import { useMemo } from "react";
 
 const navItems = [
   { path: "/", label: "Live", icon: Activity },
@@ -17,13 +27,11 @@ const navItems = [
 export const DesktopSidebar = () => {
   const pathname = usePathname();
   const { data: session } = useSession();
-  
-  const userRoles = session?.user?.roles || [];
-  const isAdmin = userRoles.includes('admin');
-  
-  const allNavItems = isAdmin 
-    ? [...navItems, { path: "/admin", label: "Admin", icon: Settings }]
-    : navItems;
+
+  const allNavItems = useMemo(() => {
+    const isAdmin = session?.user?.roles?.includes("admin");
+    return isAdmin ? [...navItems, { path: "/admin", label: "Admin", icon: Settings }] : navItems;
+  }, [session?.user?.roles]);
 
   return (
     <aside className="hidden md:flex fixed left-0 top-0 bottom-0 w-64 bg-card border-r border-border flex-col z-40">
@@ -34,10 +42,8 @@ export const DesktopSidebar = () => {
             <span className="text-white font-bold text-lg">DT</span>
           </div>
           <div>
-            <h1 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Pageify
-            </h1>
-            <p className="text-xs text-muted-foreground">Latex Manufacturing</p>
+            <h1 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent"></h1>
+            <p className="text-xs text-muted-foreground">Glove Manufacturing</p>
           </div>
         </div>
       </div>
@@ -48,15 +54,15 @@ export const DesktopSidebar = () => {
           {allNavItems.map((item) => {
             const isActive = pathname === item.path;
             const Icon = item.icon;
-            
+
             return (
               <Link
                 key={item.path}
                 href={item.path}
                 className={cn(
                   "flex items-center gap-3 px-4 py-3 rounded-lg transition-all",
-                  isActive 
-                    ? "bg-primary text-primary-foreground shadow-md" 
+                  isActive
+                    ? "bg-primary text-primary-foreground shadow-md"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 )}
               >

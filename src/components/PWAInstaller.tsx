@@ -16,23 +16,25 @@ export function PWAInstaller() {
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
-    // Always show banner after 2 seconds
-    const timer = setTimeout(() => setShowInstallBanner(true), 2000);
+    const timer = setTimeout(() => setShowInstallBanner(true), 3000);
     
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
 
-    window.addEventListener('beforeinstallprompt', handler);
-    window.addEventListener('appinstalled', () => {
+    const installHandler = () => {
       setIsInstalled(true);
       setShowInstallBanner(false);
-    });
+    };
+
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', installHandler);
 
     return () => {
       clearTimeout(timer);
       window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('appinstalled', installHandler);
     };
   }, []);
 

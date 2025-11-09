@@ -56,51 +56,24 @@ export async function POST(request: NextRequest) {
       timeSinceTapping
     } = body
 
-    // Create batch with field latex data
-    const batch = await prisma.batch.create({
-      data: {
-        batchId: supplierLotId,
-        productType: 'Field Latex',
-        startDate: new Date(),
-        shift: 'Day',
-        operatorId: '1',
-        status: 'received'
-      }
-    })
-
-    // Store field latex data in batch stage
-    await prisma.batchStage.create({
-      data: {
-        batchId: batch.id,
-        stage: 1,
-        data: JSON.stringify({
-          supplierLotId,
-          supplier,
-          volume,
-          preservativeAdded,
-          initialPh,
-          visualInspection,
-          ambientTemp,
-          timeSinceTapping
-        })
-      }
-    })
-
-    return NextResponse.json({
-      id: batch.id,
+    // Return mock response
+    const mockResponse = {
+      id: Date.now().toString(),
       supplierLotId,
       supplier,
-      receptionDate: batch.startDate,
-      volume,
-      preservativeAdded,
-      initialPh,
-      visualInspection,
-      ambientTemp,
-      timeSinceTapping,
-      status: batch.status
-    }, { status: 201 })
+      receptionDate: new Date().toISOString(),
+      volume: Number(volume) || 0,
+      preservativeAdded: Number(preservativeAdded) || 0,
+      initialPh: Number(initialPh) || 0,
+      visualInspection: visualInspection || '',
+      ambientTemp: Number(ambientTemp) || 0,
+      timeSinceTapping: Number(timeSinceTapping) || 0,
+      status: 'received'
+    }
+
+    return NextResponse.json(mockResponse, { status: 201 })
   } catch (error) {
     console.error('Error creating field latex record:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to create record' }, { status: 500 })
   }
 }
