@@ -76,6 +76,7 @@ export function useLatexProcess() {
 
   const createFieldLatex = async (data: Omit<FieldLatex, 'id' | 'receptionDate' | 'status'>) => {
     try {
+      console.log('📝 Creating field latex:', data);
       const response = await fetch('/api/latex/field', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -83,32 +84,17 @@ export function useLatexProcess() {
       });
 
       if (!response.ok) {
-        console.error('API Error:', response.status, response.statusText);
-        // Create mock record for now
-        const mockRecord = {
-          id: Date.now().toString(),
-          ...data,
-          receptionDate: new Date().toISOString(),
-          status: 'received'
-        };
-        setFieldLatex(prev => [mockRecord, ...prev]);
-        return mockRecord;
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}`);
       }
 
       const newRecord = await response.json();
+      console.log('✅ Field latex created successfully:', newRecord.id);
       setFieldLatex(prev => [newRecord, ...prev]);
       return newRecord;
     } catch (err) {
       console.error('Create field latex error:', err);
-      // Create mock record as fallback
-      const mockRecord = {
-        id: Date.now().toString(),
-        ...data,
-        receptionDate: new Date().toISOString(),
-        status: 'received'
-      };
-      setFieldLatex(prev => [mockRecord, ...prev]);
-      return mockRecord;
+      throw err;
     }
   };
 
@@ -119,6 +105,7 @@ export function useLatexProcess() {
     data: any;
   }) => {
     try {
+      console.log('📝 Creating process stage:', data);
       const response = await fetch('/api/latex/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -126,30 +113,17 @@ export function useLatexProcess() {
       });
 
       if (!response.ok) {
-        // Create mock stage as fallback
-        const mockStage = {
-          id: Date.now().toString(),
-          ...data,
-          status: 'completed',
-          completedAt: new Date().toISOString()
-        };
-        setProcessStages(prev => [mockStage, ...prev]);
-        return mockStage;
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}`);
       }
 
       const newStage = await response.json();
+      console.log('✅ Process stage created successfully:', newStage.id);
       setProcessStages(prev => [newStage, ...prev]);
       return newStage;
     } catch (err) {
-      // Create mock stage as fallback
-      const mockStage = {
-        id: Date.now().toString(),
-        ...data,
-        status: 'completed',
-        completedAt: new Date().toISOString()
-      };
-      setProcessStages(prev => [mockStage, ...prev]);
-      return mockStage;
+      console.error('Create process stage error:', err);
+      throw err;
     }
   };
 

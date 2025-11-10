@@ -44,6 +44,7 @@ export function useGloves() {
     }
     
     try {
+      console.log('🔄 Fetching glove batches from API...');
       setLoading(true);
       const response = await fetch('/api/gloves');
       
@@ -53,6 +54,7 @@ export function useGloves() {
       }
       
       const data = await response.json();
+      console.log(`✅ Fetched ${data.length} glove batches from database`);
       setGloveBatches(data);
       setError(null);
     } catch (err) {
@@ -72,6 +74,7 @@ export function useGloves() {
     qcData?: any;
   }) => {
     try {
+      console.log('📝 Creating glove batch:', data);
       const response = await fetch('/api/gloves', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -83,6 +86,7 @@ export function useGloves() {
       }
 
       const newBatch = await response.json();
+      console.log('✅ Glove batch created successfully:', newBatch.id);
       setGloveBatches(prev => [newBatch, ...prev]);
       return newBatch;
     } catch (err) {

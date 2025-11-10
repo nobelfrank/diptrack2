@@ -28,6 +28,7 @@ export function useQC() {
     }
     
     try {
+      console.log('🔄 Fetching QC results from API...');
       setLoading(true);
       const response = await fetch('/api/qc/results');
       
@@ -37,6 +38,7 @@ export function useQC() {
       }
       
       const data = await response.json();
+      console.log(`✅ Fetched ${data.length} QC results from database`);
       setQcResults(data);
       setError(null);
     } catch (err) {
@@ -55,6 +57,7 @@ export function useQC() {
     notes?: string;
   }) => {
     try {
+      console.log('📝 Creating QC result:', qcData);
       const response = await fetch('/api/qc/results', {
         method: 'POST',
         headers: {
@@ -68,6 +71,7 @@ export function useQC() {
       }
 
       const newResult = await response.json();
+      console.log('✅ QC result created successfully:', newResult.id);
       setQcResults(prev => [newResult, ...prev]);
       return newResult;
     } catch (err) {

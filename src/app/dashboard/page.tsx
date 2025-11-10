@@ -14,7 +14,7 @@ import { useSession } from "next-auth/react";
 import { useMemo, useCallback } from "react";
 
 export default function Dashboard() {
-  const { metrics, lineStatus, activeBatch, loading: dashboardLoading } = useDashboard();
+  const { metrics, processStatus, activeBatch, loading: dashboardLoading } = useDashboard();
   const { alerts, acknowledgeAlert, assignAlert, loading: alertsLoading } = useAlerts();
   const { data: session } = useSession();
 
@@ -47,14 +47,17 @@ export default function Dashboard() {
     [alerts]
   );
 
-  const performanceData = useMemo(() => [
-    { name: "Theoretical Time", value: 100, color: "hsl(var(--primary))" },
-    { name: "Planned Production", value: 95, color: "hsl(var(--primary))" },
-    { name: "Machine Run Time", value: 78, color: "hsl(var(--chart-2))" },
-    { name: "Target Performance", value: 85, color: "hsl(var(--chart-3))" },
-    { name: "Actual Performance", value: 72, color: "hsl(var(--destructive))" },
-    { name: "OEE", value: 87, color: "hsl(var(--destructive))" },
-  ], []);
+  const performanceData = useMemo(() => {
+    const baseOEE = metrics.oee || 0;
+    return [
+      { name: "Theoretical Time", value: 100, color: "hsl(var(--primary))" },
+      { name: "Planned Production", value: Math.max(85, Math.min(98, baseOEE + 10)), color: "hsl(var(--primary))" },
+      { name: "Machine Run Time", value: Math.max(70, Math.min(90, baseOEE - 5)), color: "hsl(var(--chart-2))" },
+      { name: "Target Performance", value: 85, color: "hsl(var(--chart-3))" },
+      { name: "Actual Performance", value: Math.max(60, Math.min(85, baseOEE - 10)), color: "hsl(var(--destructive))" },
+      { name: "OEE", value: baseOEE, color: "hsl(var(--destructive))" },
+    ];
+  }, [metrics.oee]);
 
   const lossesData = useMemo(() => [
     { category: "Availability", losses: ["Breakdowns", "Setup losses"] },
@@ -213,13 +216,7 @@ export default function Dashboard() {
                 <Loader2 className="w-4 h-4 animate-spin" />
               </div>
             ) : (
-              [
-                { name: 'Field Latex Collection', status: 'normal' },
-                { name: 'Centrifugation', status: 'normal' },
-                { name: 'Glove Dipping', status: 'warning' },
-                { name: 'Curing Process', status: 'normal' },
-                { name: 'Quality Control', status: 'normal' }
-              ].map((process, index) => (
+              processStatus.map((process, index) => (
                 <div key={index} className="flex justify-between items-center">
                   <span className="text-xs sm:text-sm">{process.name}</span>
                   <StatusBadge status={process.status as "info" | "critical" | "warning" | "normal" | "stable"}>

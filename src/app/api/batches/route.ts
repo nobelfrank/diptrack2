@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { generateBatchId } from '@/lib/utils'
+import { getValidOperatorId, handleApiError } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('📊 API: Fetching batches from database...');
     const batches = await prisma.batch.findMany({
       include: {
         operator: {
@@ -17,24 +19,11 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' }
     })
 
+    console.log(`📊 API: Found ${batches.length} batches in database`);
     return NextResponse.json(batches)
   } catch (error) {
-    console.error('Error fetching batches:', error)
-    // Return mock data on error
-    const mockData = [
-      {
-        id: 1,
-        batchId: 'B001',
-        productType: 'Latex Gloves',
-        status: 'active',
-        startDate: new Date().toISOString(),
-        shift: 'Day',
-        operator: { id: 1, fullName: 'John Doe', email: 'john@example.com' },
-        batchStages: [],
-        _count: { alerts: 0, qcResults: 0 }
-      }
-    ]
-    return NextResponse.json(mockData)
+    console.error('Database error:', error)
+    return NextResponse.json({ error: 'Database connection failed' }, { status: 500 })
   }
 }
 
@@ -42,7 +31,16 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { productType, latexBatchId, shift } = body
+    console.log('📝 API: Creating batch:', { productType, latexBatchId, shift })
 
+    if (!productType || !shift) {
+      return NextResponse.json(
+        { error: 'Missing required fields: productType and shift' }, 
+        { status: 400 }
+      )
+    }
+
+    const operatorId = await getValidOperatorId()
     const batchId = generateBatchId(productType)
 
     const batch = await prisma.batch.create({
@@ -52,7 +50,7 @@ export async function POST(request: NextRequest) {
         latexBatchId,
         startDate: new Date(),
         shift,
-        operatorId: '1',
+        operatorId,
         status: 'draft'
       },
       include: {
@@ -62,9 +60,9 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    console.log('✅ API: Batch created successfully:', batch.batchId);
     return NextResponse.json(batch, { status: 201 })
   } catch (error) {
-    console.error('Error creating batch:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return handleApiError(error, 'Create batch')
   }
 }

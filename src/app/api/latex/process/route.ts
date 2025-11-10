@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { handleApiError } from '@/lib/api-utils'
 
 function getStageNameByNumber(stage: number): string {
   const stageNames = {
@@ -13,25 +15,38 @@ function getStageNameByNumber(stage: number): string {
 
 export async function GET(request: NextRequest) {
   try {
-
-    // Return mock process stages
-    const mockProcessStages = [
-      {
-        id: 1,
-        batchId: 1,
-        stageName: 'Field Latex Collection',
-        stageNumber: 1,
-        data: JSON.stringify({}),
-        status: 'completed',
-        completedAt: new Date().toISOString(),
-        batch: { batchId: 'LAT001', productType: 'Field Latex' }
-      }
-    ]
+    console.log('📊 Process API: Fetching process stages from database...');
     
-    return NextResponse.json(mockProcessStages)
+    const { searchParams } = new URL(request.url)
+    const batchId = searchParams.get('batchId')
+    
+    const whereClause = batchId ? { batchId } : {}
+    
+    const batchStages = await prisma.batchStage.findMany({
+      where: whereClause,
+      include: {
+        batch: {
+          select: { batchId: true, productType: true }
+        }
+      },
+      orderBy: { stage: 'asc' }
+    })
+    
+    const processStages = batchStages.map(stage => ({
+      id: stage.id,
+      batchId: stage.batchId,
+      stageName: getStageNameByNumber(stage.stage),
+      stageNumber: stage.stage,
+      data: stage.data,
+      status: 'completed',
+      completedAt: stage.updatedAt.toISOString(),
+      batch: stage.batch
+    }))
+    
+    console.log(`📊 Process API: Found ${processStages.length} process stages in database`);
+    return NextResponse.json(processStages)
   } catch (error) {
-    console.error('Error fetching process stages:', error)
-    return NextResponse.json([])
+    return handleApiError(error, 'Fetch process stages')
   }
 }
 
@@ -39,19 +54,58 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { batchId, stageName, stageNumber, data } = body
+    
+    console.log('📝 Process API: Creating process stage:', { batchId, stageName, stageNumber });
 
-    // Return mock response
-    return NextResponse.json({
-      id: Date.now(),
-      batchId,
-      stageName,
-      stageNumber,
-      data: JSON.stringify(data),
+    if (!batchId || !stageNumber) {
+      return NextResponse.json(
+        { error: 'Missing required fields: batchId, stageNumber' }, 
+        { status: 400 }
+      )
+    }
+
+    // Verify batch exists
+    const batch = await prisma.batch.findUnique({
+      where: { id: batchId }
+    })
+
+    if (!batch) {
+      return NextResponse.json(
+        { error: 'Batch not found' }, 
+        { status: 404 }
+      )
+    }
+
+    const batchStage = await prisma.batchStage.upsert({
+      where: {
+        batchId_stage: {
+          batchId,
+          stage: stageNumber
+        }
+      },
+      update: {
+        data: JSON.stringify(data)
+      },
+      create: {
+        batchId,
+        stage: stageNumber,
+        data: JSON.stringify(data)
+      }
+    })
+
+    const processStage = {
+      id: batchStage.id,
+      batchId: batchStage.batchId,
+      stageName: stageName || getStageNameByNumber(stageNumber),
+      stageNumber: batchStage.stage,
+      data: batchStage.data,
       status: 'completed',
-      completedAt: new Date().toISOString()
-    }, { status: 201 })
+      completedAt: batchStage.updatedAt.toISOString()
+    }
+
+    console.log('✅ Process API: Process stage created successfully:', batchStage.id);
+    return NextResponse.json(processStage, { status: 201 })
   } catch (error) {
-    console.error('Error creating process stage:', error)
-    return NextResponse.json({ error: 'Failed to create stage' }, { status: 500 })
+    return handleApiError(error, 'Create process stage')
   }
 }

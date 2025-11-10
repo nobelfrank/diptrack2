@@ -2,16 +2,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/api-auth'
 import { PERMISSIONS } from '@/lib/rbac'
+import { handleApiError } from '@/lib/api-utils'
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    console.log(`📝 Alert API: Updating alert ${params.id}`);
+    
     const authResult = await requirePermission(request, PERMISSIONS.ACKNOWLEDGE_ALERTS)
     if ('error' in authResult) {
       return NextResponse.json({ error: authResult.error }, { status: authResult.status })
     }
+    
     const body = await request.json()
     const { status, assignedTo } = body
 
@@ -32,9 +36,9 @@ export async function PATCH(
       }
     })
 
+    console.log(`✅ Alert API: Alert ${params.id} updated successfully`);
     return NextResponse.json(alert)
   } catch (error) {
-    console.error('Error updating alert:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return handleApiError(error, 'Update alert')
   }
 }

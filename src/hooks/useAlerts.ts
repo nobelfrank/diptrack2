@@ -27,6 +27,7 @@ export function useAlerts() {
     }
     
     try {
+      console.log('🔄 Fetching alerts from API...');
       setLoading(true);
       const response = await fetch('/api/alerts');
       
@@ -36,6 +37,7 @@ export function useAlerts() {
       }
       
       const data = await response.json();
+      console.log(`✅ Fetched ${data.length} alerts from database`);
       setAlerts(data);
       setError(null);
     } catch (err) {

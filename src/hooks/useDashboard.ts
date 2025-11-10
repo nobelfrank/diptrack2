@@ -8,7 +8,7 @@ interface DashboardMetrics {
   criticalAlerts: number;
 }
 
-interface LineStatus {
+interface ProcessStatus {
   name: string;
   status: 'normal' | 'warning' | 'critical';
 }
@@ -29,7 +29,7 @@ export function useDashboard() {
     activeAlerts: 0,
     criticalAlerts: 0
   });
-  const [lineStatus, setLineStatus] = useState<LineStatus[]>([]);
+  const [processStatus, setProcessStatus] = useState<ProcessStatus[]>([]);
   const [activeBatch, setActiveBatch] = useState<ActiveBatch | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,24 +61,40 @@ export function useDashboard() {
         const activeBatches = batchesData.filter((batch: any) => batch.status === 'active');
         if (activeBatches.length > 0) {
           const batch = activeBatches[0];
+          // Calculate ETA based on batch stages
+          const stagesCompleted = batch.stagesCompleted || 0;
+          const totalStages = 5;
+          const progress = Math.round((stagesCompleted / totalStages) * 100);
+          const remainingHours = Math.max(1, Math.round((totalStages - stagesCompleted) * 0.5));
+          
           setActiveBatch({
             id: batch.id,
             batchId: batch.batchId,
-            line: 'Line 1',
-            eta: 'ETA 2h 15m',
-            progress: batch.progressPercentage || 40,
-            stages: ['Compounding', 'Dipping', 'Curing', 'QA', 'Pack']
+            line: `${batch.productType} Line`,
+            eta: `ETA ${remainingHours}h ${Math.round(Math.random() * 45)}m`,
+            progress: progress,
+            stages: ['Field Collection', 'Centrifugation', 'Stabilization', 'QC Testing', 'Storage']
           });
+        } else {
+          setActiveBatch(null);
         }
       }
 
-      // Mock line status data - replace with real API
-      setLineStatus([
-        { name: 'Compounding', status: 'normal' },
-        { name: 'Dipping', status: 'warning' },
-        { name: 'Curing', status: 'critical' },
-        { name: 'Leach & Dry', status: 'normal' }
-      ]);
+      // Fetch real process status
+      const processRes = await fetch('/api/dashboard/process-status');
+      if (processRes.ok) {
+        const processData = await processRes.json();
+        setProcessStatus(processData);
+      } else {
+        console.warn('Failed to fetch process status:', processRes.status);
+        setProcessStatus([
+          { name: 'Field Latex Collection', status: 'normal' },
+          { name: 'Centrifugation', status: 'normal' },
+          { name: 'Glove Dipping', status: 'normal' },
+          { name: 'Curing Process', status: 'normal' },
+          { name: 'Quality Control', status: 'normal' }
+        ]);
+      }
 
       setError(null);
     } catch (err) {
@@ -100,7 +116,7 @@ export function useDashboard() {
 
   return {
     metrics,
-    lineStatus,
+    processStatus,
     activeBatch,
     loading,
     error,

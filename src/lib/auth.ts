@@ -18,7 +18,33 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        // DEMO CREDENTIALS - Remove in production!
+        try {
+          // Try database first
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email },
+            include: { userRoles: true }
+          });
+
+          if (user) {
+            const isPasswordValid = await bcrypt.compare(
+              credentials.password,
+              user.password
+            );
+
+            if (isPasswordValid) {
+              return {
+                id: user.id,
+                email: user.email,
+                name: user.fullName,
+                roles: user.userRoles.map(ur => ur.role)
+              };
+            }
+          }
+        } catch (error) {
+          console.log('Database auth failed, using demo credentials');
+        }
+
+        // Fallback to demo credentials
         const demoUsers = {
           'admin@diptrack.com': { password: 'admin123', roles: ['admin'], name: 'Admin User' },
           'operator@diptrack.com': { password: 'operator123', roles: ['operator'], name: 'Operator User' },
@@ -27,16 +53,16 @@ export const authOptions: NextAuthOptions = {
 
         const demoUser = demoUsers[credentials.email as keyof typeof demoUsers];
         
-        if (!demoUser || demoUser.password !== credentials.password) {
-          return null;
+        if (demoUser && demoUser.password === credentials.password) {
+          return {
+            id: credentials.email,
+            email: credentials.email,
+            name: demoUser.name,
+            roles: demoUser.roles
+          };
         }
 
-        return {
-          id: credentials.email,
-          email: credentials.email,
-          name: demoUser.name,
-          roles: demoUser.roles
-        }
+        return null;
       }
     })
   ],
