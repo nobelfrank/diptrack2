@@ -90,9 +90,10 @@ export function useOfflineCapable<T>({ table, apiEndpoint, cacheKey }: UseOfflin
 
   // Create data (offline-capable)
   const createData = useCallback(async (newData: Omit<T, 'id'>) => {
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    const dataWithId = { ...newData, id: tempId } as T
+
     try {
-      const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      const dataWithId = { ...newData, id: tempId } as T
 
       if (isOnline) {
         console.log(`🌐 Online: Creating ${table} via API...`)
@@ -136,7 +137,6 @@ export function useOfflineCapable<T>({ table, apiEndpoint, cacheKey }: UseOfflin
       
       // Store offline even if online creation failed
       await offlineDB.storeOfflineAction(table, 'create', newData)
-      const dataWithId = { ...newData, id: tempId } as T
       setData(prev => [dataWithId, ...prev])
       
       console.log(`📱 ${table} stored offline due to error, will sync when possible`)
