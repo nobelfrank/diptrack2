@@ -5,6 +5,8 @@ import { Providers } from './providers'
 import { PWAProvider } from '@/components/PWAProvider'
 import { PWAInstaller } from '@/components/PWAInstaller'
 import { OfflineIndicator } from '@/components/OfflineIndicator'
+import { OfflineProvider } from '@/components/OfflineProvider'
+import { OfflineStatus } from '@/components/OfflineStatus'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -41,11 +43,14 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <PWAProvider>
-          <Providers>
-            {children}
-            <PWAInstaller />
-            <OfflineIndicator />
-          </Providers>
+          <OfflineProvider>
+            <Providers>
+              {children}
+              <PWAInstaller />
+              <OfflineIndicator />
+              <OfflineStatus />
+            </Providers>
+          </OfflineProvider>
         </PWAProvider>
       </body>
     </html>

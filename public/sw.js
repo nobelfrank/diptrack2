@@ -1,9 +1,9 @@
-const CACHE_NAME = 'pageify-v1';
-const STATIC_CACHE = 'pageify-static-v1';
-const API_CACHE = 'pageify-api-v1';
+const CACHE_NAME = 'diptrack-v1';
+const STATIC_CACHE = 'diptrack-static-v1';
+const API_CACHE = 'diptrack-api-v1';
 
-const STATIC_ASSETS = [
-  '/',
+const ESSENTIAL_ASSETS = [
+  '/offline.html',
   '/manifest.json'
 ];
 
@@ -13,14 +13,25 @@ const API_ROUTES = [
   '/api/qc/results',
   '/api/latex/field',
   '/api/latex/process',
-  '/api/gloves'
+  '/api/gloves',
+  '/api/health'
 ];
 
 // Install event
 self.addEventListener('install', (event) => {
+  console.log('SW: Installing...');
   event.waitUntil(
     Promise.all([
-      caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS)),
+      caches.open(STATIC_CACHE).then((cache) => {
+        console.log('SW: Caching essential assets');
+        return Promise.allSettled(
+          ESSENTIAL_ASSETS.map(asset => 
+            cache.add(asset).catch(err => 
+              console.log(`SW: Failed to cache ${asset}:`, err)
+            )
+          )
+        );
+      }),
       self.skipWaiting()
     ])
   );
@@ -61,8 +72,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Handle essential static assets only
+  if (url.pathname === '/manifest.json' || url.pathname === '/offline.html') {
+    event.respondWith(handleStaticRequest(request));
+    return;
+  }
+
   // Handle other requests normally
-  event.respondWith(fetch(request));
+  event.respondWith(fetch(request).catch(() => {
+    return new Response('Offline', { status: 503 });
+  }));
 });
 
 async function handleApiRequest(request) {
@@ -106,11 +125,50 @@ async function handleNavigationRequest(request) {
     const response = await fetch(request);
     return response;
   } catch (error) {
-    // Network failed, return cached page or offline page
-    const cache = await caches.open(STATIC_CACHE);
-    const cachedResponse = await cache.match('/');
+    console.log('SW: Navigation offline, serving offline page');
     
-    return cachedResponse || new Response('Offline', { status: 503 });
+    // Serve offline page
+    const cache = await caches.open(STATIC_CACHE);
+    const offlineResponse = await cache.match('/offline.html');
+    
+    if (offlineResponse) {
+      return offlineResponse;
+    }
+    
+    // Fallback offline response
+    return new Response(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>DipTrack - Offline</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              text-align: center; 
+              padding: 50px;
+              background: #0f172a;
+              color: #e2e8f0;
+            }
+            .button {
+              background: #8B5CF6;
+              color: white;
+              border: none;
+              padding: 12px 24px;
+              border-radius: 8px;
+              cursor: pointer;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>DipTrack - Offline Mode</h1>
+          <p>You're currently offline. Your data is stored locally.</p>
+          <button class="button" onclick="window.location.reload()">Try Again</button>
+        </body>
+      </html>
+    `, {
+      headers: { 'Content-Type': 'text/html' }
+    });
   }
 }
 

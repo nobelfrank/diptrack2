@@ -16,7 +16,39 @@ export function PWAInstaller() {
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setShowInstallBanner(true), 3000);
+    // Check if already installed
+    const checkInstallStatus = () => {
+      // Check if running in standalone mode (installed)
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+      const isInWebAppiOS = (window.navigator as any).standalone === true;
+      const wasInstalled = localStorage.getItem('pwa-installed') === 'true';
+      const wasDismissed = localStorage.getItem('pwa-install-dismissed');
+      const dismissedTime = wasDismissed ? parseInt(wasDismissed) : 0;
+      const daysSinceDismissed = (Date.now() - dismissedTime) / (1000 * 60 * 60 * 24);
+      
+      if (isStandalone || isInWebAppiOS || wasInstalled) {
+        setIsInstalled(true);
+        setShowInstallBanner(false);
+        return true;
+      }
+      
+      // Don't show if dismissed recently (within 7 days)
+      if (wasDismissed && daysSinceDismissed < 7) {
+        return true;
+      }
+      
+      return false;
+    };
+    
+    if (checkInstallStatus()) {
+      return;
+    }
+    
+    const timer = setTimeout(() => {
+      if (!checkInstallStatus()) {
+        setShowInstallBanner(true);
+      }
+    }, 3000);
     
     const handler = (e: Event) => {
       e.preventDefault();
@@ -47,23 +79,21 @@ export function PWAInstaller() {
         if (outcome === 'accepted') {
           setDeferredPrompt(null);
           setShowInstallBanner(false);
+          setIsInstalled(true);
           localStorage.setItem('pwa-installed', 'true');
+          localStorage.removeItem('pwa-install-dismissed');
+        } else {
+          handleDismiss();
         }
       } catch (error) {
         console.log('Install failed:', error);
+        handleDismiss();
       }
     } else {
-      // Force install simulation
+      // For browsers that don't support beforeinstallprompt
       setShowInstallBanner(false);
       localStorage.setItem('pwa-installed', 'true');
-      
-      // Try to trigger native install
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.ready.then(() => {
-          // Simulate successful install
-          window.dispatchEvent(new Event('appinstalled'));
-        });
-      }
+      setIsInstalled(true);
     }
   };
 
@@ -71,8 +101,22 @@ export function PWAInstaller() {
     setShowInstallBanner(false);
     localStorage.setItem('pwa-install-dismissed', Date.now().toString());
   };
+  
+  // Listen for app installed event
+  useEffect(() => {
+    const handleAppInstalled = () => {
+      console.log('✅ PWA installed successfully');
+      setIsInstalled(true);
+      setShowInstallBanner(false);
+      localStorage.setItem('pwa-installed', 'true');
+      localStorage.removeItem('pwa-install-dismissed');
+    };
+    
+    window.addEventListener('appinstalled', handleAppInstalled);
+    return () => window.removeEventListener('appinstalled', handleAppInstalled);
+  }, []);
 
-  if (!showInstallBanner) return null;
+  if (!showInstallBanner || isInstalled) return null;
 
   return (
     <div className="fixed top-4 left-4 right-4 md:left-auto md:right-4 md:w-80 bg-card border border-border rounded-lg shadow-lg p-4 z-50 animate-in slide-in-from-top">
